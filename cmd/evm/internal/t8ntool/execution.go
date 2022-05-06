@@ -24,11 +24,13 @@ import (
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/common/math"
 	"github.com/celo-org/celo-blockchain/consensus"
+	"github.com/celo-org/celo-blockchain/consensus/consensustest"
 	"github.com/celo-org/celo-blockchain/core"
 	"github.com/celo-org/celo-blockchain/core/rawdb"
 	"github.com/celo-org/celo-blockchain/core/state"
 	"github.com/celo-org/celo-blockchain/core/types"
 	"github.com/celo-org/celo-blockchain/core/vm"
+	"github.com/celo-org/celo-blockchain/core/vm/vmcontext"
 	"github.com/celo-org/celo-blockchain/crypto"
 	"github.com/celo-org/celo-blockchain/ethdb"
 	"github.com/celo-org/celo-blockchain/log"
@@ -89,12 +91,11 @@ type rejectedTx struct {
 
 // evmRunnerCtx is an implementation of evmRunnerContext, and it's for building evmRunner
 type evmRunnerCtx struct {
-	vmConfig      *vm.Config
-	currentHeader *types.Header
-	state         *state.StateDB
-	engine        consensus.Engine
-	header        *types.Header
-	chainConfig   *params.ChainConfig
+	vmConfig    *vm.Config
+	state       *state.StateDB
+	engine      consensus.Engine
+	header      *types.Header
+	chainConfig *params.ChainConfig
 }
 
 func (e *evmRunnerCtx) GetVMConfig() *vm.Config {
@@ -102,7 +103,7 @@ func (e *evmRunnerCtx) GetVMConfig() *vm.Config {
 }
 
 func (e *evmRunnerCtx) CurrentHeader() *types.Header {
-	return e.currentHeader
+	return e.header
 }
 
 func (e *evmRunnerCtx) State() (*state.StateDB, error) {
@@ -157,10 +158,25 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		receipts    = make(types.Receipts, 0)
 		txIndex     = 0
 	)
+
+	header := &types.Header{
+		Number:   new(big.Int).SetUint64(pre.Env.Number),
+		Coinbase: pre.Env.Coinbase,
+		Time:     pre.Env.Timestamp,
+	}
+
+	evmRunnerCtx := &evmRunnerCtx{
+		vmConfig:    &(*(&vmConfig)), // Copy to avoid race
+		state:       statedb,
+		engine:      consensustest.NewFaker(),
+		header:      header,
+		chainConfig: chainConfig,
+	}
+
 	gaspool.AddGas(pre.Env.GasLimit)
 	vmContext := vm.BlockContext{
-		//		CanTransfer: core.CanTransfer,
-		//		Transfer:    core.Transfer,
+		CanTransfer: vmcontext.CanTransfer,
+		Transfer:    vmcontext.TobinTransfer,
 		Coinbase:    pre.Env.Coinbase,
 		BlockNumber: new(big.Int).SetUint64(pre.Env.Number),
 		Time:        new(big.Int).SetUint64(pre.Env.Timestamp),
@@ -193,7 +209,8 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 
 		// FIXME this is broken
 		// (ret []byte, usedGas uint64, failed bool, err error)
-		msgResult, err := core.ApplyMessage(evm, msg, gaspool, nil, &core.SysContractCallCtx{})
+		vmRunner := vmcontext.NewEVMRunner(evmRunnerCtx, header, statedb)
+		msgResult, err := core.ApplyMessage(evm, msg, gaspool, vmRunner, &core.SysContractCallCtx{})
 		if err != nil {
 			statedb.RevertToSnapshot(snapshot)
 			log.Info("rejected tx", "index", i, "hash", tx.Hash(), "from", msg.From(), "error", err)
