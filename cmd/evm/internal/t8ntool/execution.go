@@ -92,7 +92,6 @@ type rejectedTx struct {
 // evmRunnerCtx is an implementation of evmRunnerContext, and it's for building evmRunner
 type evmRunnerCtx struct {
 	vmConfig    *vm.Config
-	state       *state.StateDB
 	engine      consensus.Engine
 	header      *types.Header
 	chainConfig *params.ChainConfig
@@ -100,14 +99,6 @@ type evmRunnerCtx struct {
 
 func (e *evmRunnerCtx) GetVMConfig() *vm.Config {
 	return e.vmConfig
-}
-
-func (e *evmRunnerCtx) CurrentHeader() *types.Header {
-	return e.header
-}
-
-func (e *evmRunnerCtx) State() (*state.StateDB, error) {
-	return e.state, nil
 }
 
 func (e *evmRunnerCtx) Engine() consensus.Engine {
