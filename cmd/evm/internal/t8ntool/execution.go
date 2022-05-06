@@ -23,6 +23,7 @@ import (
 
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/common/math"
+	"github.com/celo-org/celo-blockchain/consensus"
 	"github.com/celo-org/celo-blockchain/core"
 	"github.com/celo-org/celo-blockchain/core/rawdb"
 	"github.com/celo-org/celo-blockchain/core/state"
@@ -84,6 +85,46 @@ type stEnvMarshaling struct {
 type rejectedTx struct {
 	Index int    `json:"index"`
 	Err   string `json:"error"`
+}
+
+// evmRunnerCtx is an implementation of evmRunnerContext, and it's for building evmRunner
+type evmRunnerCtx struct {
+	vmConfig      *vm.Config
+	currentHeader *types.Header
+	state         *state.StateDB
+	engine        consensus.Engine
+	header        *types.Header
+	chainConfig   *params.ChainConfig
+}
+
+func (e *evmRunnerCtx) GetVMConfig() *vm.Config {
+	return e.vmConfig
+}
+
+func (e *evmRunnerCtx) CurrentHeader() *types.Header {
+	return e.currentHeader
+}
+
+func (e *evmRunnerCtx) State() (*state.StateDB, error) {
+	return e.state, nil
+}
+
+func (e *evmRunnerCtx) Engine() consensus.Engine {
+	return e.engine
+}
+
+// GetHeader doesn't take hash and number into account, because in the test we have only one header.
+func (e *evmRunnerCtx) GetHeader(common.Hash, uint64) *types.Header {
+	return e.header
+}
+
+// GetHeaderByNumber doesn't take number into account, because in the test we have only one header.
+func (e *evmRunnerCtx) GetHeaderByNumber(uint64) *types.Header {
+	return e.header
+}
+
+func (e *evmRunnerCtx) Config() *params.ChainConfig {
+	return e.chainConfig
 }
 
 // Apply applies a set of transactions to a pre-state
