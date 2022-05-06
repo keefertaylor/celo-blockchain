@@ -149,16 +149,13 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		receipts    = make(types.Receipts, 0)
 		txIndex     = 0
 	)
-
 	header := &types.Header{
 		Number:   new(big.Int).SetUint64(pre.Env.Number),
 		Coinbase: pre.Env.Coinbase,
 		Time:     pre.Env.Timestamp,
 	}
-
 	evmRunnerCtx := &evmRunnerCtx{
 		vmConfig:    &(*(&vmConfig)), // Copy to avoid race
-		state:       statedb,
 		engine:      consensustest.NewFaker(),
 		header:      header,
 		chainConfig: chainConfig,
@@ -198,9 +195,8 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 
 		snapshot := statedb.Snapshot()
 
-		// FIXME this is broken
-		// (ret []byte, usedGas uint64, failed bool, err error)
 		vmRunner := vmcontext.NewEVMRunner(evmRunnerCtx, header, statedb)
+		// (ret []byte, usedGas uint64, failed bool, err error)
 		msgResult, err := core.ApplyMessage(evm, msg, gaspool, vmRunner, &core.SysContractCallCtx{})
 		if err != nil {
 			statedb.RevertToSnapshot(snapshot)
