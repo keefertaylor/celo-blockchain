@@ -122,14 +122,14 @@ func TestT8n(t *testing.T) {
 			output: t8nOutput{alloc: true, result: true},
 			expOut: "exp.json",
 		},
-		//{ // missing blockhash test
-		//	base: "./testdata/4",
-		//	input: t8nInput{
-		//		"alloc.json", "txs.json", "env.json", "Berlin", "",
-		//	},
-		//	output:      t8nOutput{alloc: true, result: true},
-		//	expExitCode: 4,
-		//},
+		{ // missing blockhash test
+			base: "./testdata/4",
+			input: t8nInput{
+				"alloc.json", "txs.json", "env.json", "Istanbul", "",
+			},
+			output:      t8nOutput{alloc: true, result: true},
+			expExitCode: 4,
+		},
 		//{ // Ommer test
 		//	base: "./testdata/5",
 		//	input: t8nInput{
